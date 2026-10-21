@@ -1,3 +1,22 @@
+# Zephyr reproducer: Software writes to BFAR, MMFAR and SFAR are dropped
+
+BFAR, MMFAR and SFAR are read/write (Armv8-M ARM DDI0553B.r, D1.2.6, D1.2.165, D1.2.228), but
+the NVIC has no write handlers and tlib no setters, so writes are dropped with an "Unhandled
+write" warning.
+
+The app writes BFAR, as Zephyr's Secure firmware does at boot, and reads it back. Source: `app/src/main.c`. Bare-metal reproducer: branch `bfar-write`. Fixed by tlib branch `arm-m-bfar-setter` and renode-infrastructure branch `nvic-bfar-write`.
+
+UART output on Renode `master` (fault dumps shortened):
+
+```
+*** Booting Zephyr OS build a915b2f12675 ***
+FAIL: BFAR reads 0x00000000 after writing 0x12345678
+PASS: BFAR reads back 0x00000000
+REPRODUCER DONE
+```
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
