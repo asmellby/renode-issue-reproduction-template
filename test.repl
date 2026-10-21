@@ -1,10 +1,16 @@
-nvic: IRQControllers.NVIC @ sysbus 0xE000E000
+nvic: IRQControllers.NVIC @ {
+        sysbus new Bus.BusPointRegistration { address: 0xE000E000; cpu: cpu };
+        sysbus new Bus.BusMultiRegistration { address: 0xE002E000; size: 0x1000; region: "NonSecure"; cpu: cpu }
+    }
     IRQ -> cpu@0
 
 cpu: CPU.CortexM @ sysbus
     cpuType: "cortex-m33"
     nvic: nvic
     numberOfMPURegions: 8
+    enableTrustZone: true
+    numberOfSAURegions: 8
+    numberOfIDAURegions: 8
 
 flash: Memory.MappedMemory @ sysbus 0x00000000
     size: 0x10000

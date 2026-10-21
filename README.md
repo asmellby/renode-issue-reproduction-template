@@ -1,3 +1,30 @@
+# Reproducer: Software writes to BFAR, MMFAR and SFAR are dropped
+
+BFAR, MMFAR and SFAR are read/write (Armv8-M ARM DDI0553B.r, D1.2.6, D1.2.165, D1.2.228), but
+the NVIC has no write handlers and tlib no setters, so writes are dropped with an "Unhandled
+write" warning.
+
+`src/test.c` runs on a TrustZone-enabled Cortex-M33 (`test.repl`). Fixed by tlib branch `arm-m-bfar-setter` and renode-infrastructure branch `nvic-bfar-write`.
+
+On Renode `master`:
+
+```
+OK: Firmware Should Finish
+failed: BFAR Should Read Back The Written Value
+    BFAR after writing 0x12345678: got 0x0, expected 0x12345678
+OK: Non-secure BFAR Write Should Be Ignored Without BFHFNMINS
+failed: Non-secure BFAR Write Should Take Effect With BFHFNMINS
+    BFAR after writing BFAR_NS: got 0x0, expected 0x55550000
+failed: MMFAR Should Read Back The Written Value Of Each Bank
+    MMFAR after writing 0x11112222: got 0x0, expected 0x11112222
+failed: SFAR Should Read Back The Written Value
+    SFAR after writing 0x77778888 and then 0 to SFAR_NS: got 0x0, expected 0x77778888
+```
+
+Passes with both fixes.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
