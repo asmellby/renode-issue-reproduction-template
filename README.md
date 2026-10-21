@@ -1,3 +1,22 @@
+# Zephyr reproducer: CONTROL.SPSEL is not cleared when an exception is activated
+
+Exception entry should clear CONTROL.SPSEL (Armv8-M ARM DDI0553B.r, `ActivateException()`).
+Renode keeps the Thread mode value, so a handler interrupting a PSP thread reads SPSEL = 1, and an
+exception preempting that handler gets EXC_RETURN.SPSEL = 1. Handlers that pick their frame from
+EXC_RETURN then read the thread's frame; Zephyr reports the wrong fault reason.
+
+`tests/kernel/fatal/exception` with `sentinel.conf` breaks a stack sentinel in `test_fatal_stack_sentinel_timer`; the interrupt-exit check raises an SVC from the ISR and expects K_ERR_STACK_CHK_FAIL. `bin/zephyr.elf` is the unmodified test: `west build -b nucleo_h533re zephyr/tests/kernel/fatal/exception -- -DCONF_FILE=sentinel.conf`. Bare-metal reproducer: branch `spsel`. Fixed by tlib branch `arm-m-spsel-exception-entry`.
+
+On Renode `master` `test_fatal_stack_sentinel_timer` fails: the SVC handler reads the reason from the thread's frame on PSP instead of its own frame on MSP.
+
+```
+START - test_fatal_stack_sentinel_timer
+E: >>> ZEPHYR FATAL ERROR 46: Unknown error on CPU 0
+Wrong crash type got 46 expected 2
+```
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
