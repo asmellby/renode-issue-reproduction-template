@@ -6,3 +6,6 @@ robot_output.xml
 
 # artifacts directory
 artifacts
+
+# reproducer build output
+src/test.elf

@@ -13,7 +13,7 @@ jobs:
         item:
           # Here you can add your fork of Renode
           - repository: 'https://github.com/renode/renode'
-            revision: v1.16.1
+            revision: v1.17.0
             name: renode-stable
           - repository: 'https://github.com/renode/renode'
             revision: master
@@ -39,13 +39,16 @@ jobs:
         run: pip3 install -r requirements.txt
 
       - name: Run tests on Renode
-        uses: antmicro/renode-test-action@v5
+        # antmicro/renode-test-action@v5 passes --net to build.sh, which Renode master no longer
+        # accepts; switch back once the action is fixed upstream
+        uses: asmellby/renode-test-action@drop-net-flag
         with:
             renode-repository: ${{ matrix.item.repository }}
             renode-revision: ${{ matrix.item.revision }}
             tests-to-run: 'test.robot'
 
       - name: Archive Renode simulation results
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
             name: test-results-${{ matrix.item.name }}

@@ -1,3 +1,19 @@
+# Bare-metal Cortex-M33 reproducer harness
+
+Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
+
+* `src/common/` - startup code, vector table, linker script. Thread mode runs on PSP; every
+  exception goes to the test's `on_exception()`, which can abandon the step and continue with the
+  next (`resume_next_step()`). Results go to a RAM array at `0x2000F000`.
+* `src/test.c` - `test_init()`, the steps, and `on_exception()`.
+* `test.repl` - minimal Cortex-M33 (NVIC, MPU, 64 KiB flash and RAM).
+* `test.resc`, `common.robot` - load and run the ELF and check the results.
+* `build.sh` - builds `src/test.elf` with `arm-none-eabi-gcc` into `artifacts/`.
+
+The example test on this branch passes.
+
+---
+
 # Renode issue reproduction template
 
 This repository is meant to help report issues in (and provide contributions to) the open source [Renode simulation framework](https://renode.io).

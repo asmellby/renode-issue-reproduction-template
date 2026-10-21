@@ -1,18 +1,13 @@
-*** Variables ***
-${SCRIPT}                     ${CURDIR}/test.resc
-${UART}                       sysbus.usart2
-
-*** Keywords ***
-Load Script
-    Execute Script            ${SCRIPT}
-    Create Terminal Tester    ${UART}
+*** Settings ***
+Resource                      ${CURDIR}/common.robot
+Suite Setup                   Setup
+Suite Teardown                Teardown
+Test Setup                    Run Reproducer
+Test Teardown                 Test Teardown
 
 *** Test Cases ***
-Should Run Test Case
-    Load Script
-    Start Emulation
-    
-    Register Failing Uart String    ZEPHYR FATAL ERROR
+Firmware Should Finish
+    Firmware Should Have Finished
 
-    Wait For Line On Uart       *** Booting Zephyr OS build 076b625f2144 ***
-    Wait For Line On Uart       Hello World! nucleo_h533re/stm32h533xx
+Example Step Should Record Its Result
+    Result Should Be          1    1             Result of the example step
