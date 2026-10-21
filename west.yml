@@ -1,0 +1,17 @@
+# Zephyr workspace for the reproducer app in app/. From the directory containing this repository:
+#   west init -l <this repository> && west update
+#   west build -b nucleo_h533re <this repository>/app
+#   cp build/zephyr/zephyr.elf <this repository>/bin/
+manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: a915b2f12675b48b16d56653ea145dcd8f20cbbf
+      import:
+        name-allowlist:
+          - cmsis
+          - cmsis_6
+          - hal_stm32

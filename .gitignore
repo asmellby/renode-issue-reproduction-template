@@ -6,3 +6,6 @@ robot_output.xml
 
 # artifacts directory
 artifacts
+
+# Zephyr workspace build output
+build/

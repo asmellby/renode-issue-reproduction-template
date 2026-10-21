@@ -1,3 +1,32 @@
+# Zephyr reproducer harness for nucleo_h533re
+
+Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
+
+* `west.yml` - west manifest pinning Zephyr and the needed modules.
+* `app/` - the app. It prints `PASS: <check>` or `FAIL: <check>` per check and `REPRODUCER DONE`.
+* `bin/zephyr.elf` - `app/` built with the Zephyr SDK 1.0.1. To rebuild, from the directory
+  containing this repository:
+
+  ```
+  west init -l <this repository> && west update
+  west build -b nucleo_h533re <this repository>/app
+  cp build/zephyr/zephyr.elf <this repository>/bin/
+  ```
+
+* `nucleo_h533re.repl` - the template's platform updated for Renode 1.17.0 and later:
+  `STM32F4_RNG` is `STM32_RNG`, and `STM32_RNG` and `STM32SPI` need a `series` (L5).
+* `nucleo_h533re_tz.repl` - the same with TrustZone (8 SAU and 8 IDAU regions) and the NVIC's
+  Non-secure alias at 0xE002E000; Zephyr runs in Secure state.
+* `test.resc`, `common.robot` - load the platform and ELF and watch `usart2`; a `FAIL:` line fails
+  the test.
+
+CI uses asmellby/renode-test-action@drop-net-flag (the upstream action passes `--net` to
+`build.sh`, which Renode `master` rejects) and archives Robot results of failing runs.
+
+The example app on this branch passes.
+
+---
+
 # Renode issue reproduction template
 
 This repository is meant to help report issues in (and provide contributions to) the open source [Renode simulation framework](https://renode.io).

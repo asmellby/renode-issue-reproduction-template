@@ -1,18 +1,11 @@
-*** Variables ***
-${SCRIPT}                     ${CURDIR}/test.resc
-${UART}                       sysbus.usart2
-
-*** Keywords ***
-Load Script
-    Execute Script            ${SCRIPT}
-    Create Terminal Tester    ${UART}
+*** Settings ***
+Resource                      ${CURDIR}/common.robot
 
 *** Test Cases ***
-Should Run Test Case
-    Load Script
-    Start Emulation
-    
-    Register Failing Uart String    ZEPHYR FATAL ERROR
-
-    Wait For Line On Uart       *** Booting Zephyr OS build 076b625f2144 ***
-    Wait For Line On Uart       Hello World! nucleo_h533re/stm32h533xx
+Example Check Should Pass
+    # Host time: an emulation that hangs never reaches the virtual-time UART timeouts
+    [Timeout]                 60 seconds
+    Load Reproducer
+    Run Reproducer
+    Wait For Line On Uart     PASS: the example check
+    Wait For Line On Uart     REPRODUCER DONE
