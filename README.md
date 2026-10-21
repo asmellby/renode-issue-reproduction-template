@@ -1,3 +1,30 @@
+# Reproducer: CONTROL.SPSEL is not cleared when an exception is activated
+
+Exception entry should clear CONTROL.SPSEL (Armv8-M ARM DDI0553B.r, `ActivateException()`).
+Renode keeps the Thread mode value, so a handler interrupting a PSP thread reads SPSEL = 1, and an
+exception preempting that handler gets EXC_RETURN.SPSEL = 1. Handlers that pick their frame from
+EXC_RETURN then read the thread's frame; Zephyr reports the wrong fault reason.
+
+`src/test.c` runs on the harness Cortex-M33. Fixed by tlib branch `arm-m-spsel-exception-entry`.
+
+On Renode `master`:
+
+```
+OK: Firmware Should Finish
+failed: Handler Should Run With CONTROL.SPSEL Clear
+    CONTROL.SPSEL in the SVCall handler
+failed: Exception Preempting A Handler Should Return To SP_main
+    EXC_RETURN 0xFFFFFFB4 of PendSV: Mode and SPSEL should be 0 (Handler, SP_main)
+failed: Nested Interrupts Should Run With CONTROL.SPSEL Clear
+    CONTROL.SPSEL in the IRQ handlers
+failed: Tail-Chained Interrupts Should Run With CONTROL.SPSEL Clear
+    CONTROL.SPSEL in the IRQ handlers
+```
+
+Passes with the fix.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
