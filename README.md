@@ -1,3 +1,25 @@
+# Zephyr reproducer: TT cannot report Secure IDAU regions
+
+TT reports the IDAU region of an address in TT_RESP.IRVALID and IREGION, Secure regions
+included (Armv8-M ARM DDI0553B.r, B10.4, D1.2.266); Silicon Labs Series 2 and SiXG301 IDAUs have
+Secure regions. tlib's IDAU regions can only be Non-secure or Non-secure callable, so Secure memory
+must be left outside all regions, where TT reports IRVALID = 0. The fix adds a Secure flag (RLAR
+bit 2).
+
+TT must report a Secure IDAU region as Secure with IRVALID set and its region number, and an address in no region with IRVALID clear. Source: `app/src/main.c`. Bare-metal reproducer: branch `idau-secure`. Fixed by tlib branch `arm-m-idau-secure` and renode-infrastructure branch `cortexm-idau-secure-regions`.
+
+UART output on Renode `master` (fault dumps shortened):
+
+```
+*** Booting Zephyr OS build a915b2f12675 ***
+FAIL: TT reports the Secure IDAU region with TT_RESP 0x00be0000
+PASS: TT reports the Non-secure IDAU region as Non-secure, in IDAU region 1
+PASS: TT reports an address in no IDAU region as Secure, in no IDAU region
+REPRODUCER DONE
+```
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
