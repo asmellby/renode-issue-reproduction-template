@@ -1,3 +1,54 @@
+# Reproducer: The MPU is applied to PPB accesses
+
+PPB accesses bypass the MPU, and an unprivileged access to a privileged-only PPB register is a
+precise BusFault that leaves the register unchanged; STIR accepts unprivileged writes when
+CCR.USERSETMPEND is set (Armv8-M ARM DDI0553B.r, rules TGQD, RTKK, NDML, NSWG, DQQS). Renode checks
+PPB accesses against the MPU: unprivileged accesses raise MemManage (permitted STIR writes
+included) or, with the MPU off, succeed, and privileged accesses fault without PRIVDEFENA or under
+an overlapping MPU region.
+
+`src/test.c` runs on a TrustZone-enabled Cortex-M33 (`test.repl`). Fixed by tlib branch `arm-m-ppb-mpu`.
+
+On Renode `master`:
+
+```
+failed: Firmware Should Finish
+    Unexpected exception 3 (CFSR 130, PC 422)
+failed: Unprivileged STIR Write With USERSETMPEND Should Pend The Interrupt
+    Fault exception number: got 0x4, expected 0x0
+failed: Unprivileged ICSR Read Should Raise A Precise BusFault
+    Fault exception number (5 = BusFault, 4 = MemManage): got 0x4, expected 0x5
+failed: Unprivileged NVIC_IPR Byte Write Should Raise A Precise BusFault
+    Fault exception number (5 = BusFault, 4 = MemManage): got 0x4, expected 0x5
+failed: Unprivileged DWT Read Should Raise A Precise BusFault
+    Fault exception number (5 = BusFault, 4 = MemManage): got 0x4, expected 0x5
+failed: Unprivileged STIR Write Without USERSETMPEND Should Raise A Precise BusFault
+    Fault exception number (5 = BusFault, 4 = MemManage): got 0x4, expected 0x5
+failed: Privileged SCS Write Under A Read-Only MPU Region Should Succeed
+    Fault exception number: got 0x4, expected 0x0
+failed: Privileged SCS Read Without PRIVDEFENA Should Succeed
+    VTOR read back: got 0x0, expected 0x1
+OK: Unprivileged ITM Stimulus Write Should Succeed
+failed: Unprivileged Stacking Into The PPB Should Not Fault
+    IRQ 0 taken: got 0x0, expected 0x1
+failed: Unprivileged SCS Write With The MPU Disabled Should Raise A Precise BusFault
+    Fault exception number (5 = BusFault, 4 = MemManage): got 0x0, expected 0x5
+failed: Unprivileged STIR Read With USERSETMPEND Should Read As Zero
+    Read completed: got 0x0, expected 0x1
+failed: Unprivileged VLSTM To The PPB Should Raise A Precise BusFault
+    Fault exception number (5 = BusFault, 4 = MemManage): got 0x0, expected 0x5
+failed: Unprivileged VLLDM From The PPB Should Raise A Precise BusFault
+    Fault exception number (5 = BusFault, 4 = MemManage): got 0x0, expected 0x5
+failed: Non-secure Unprivileged Read Of A Secure PPB Address Should Raise A SecureFault
+    Fault exception number (7 = SecureFault, 5 = BusFault): got 0x0, expected 0x7
+failed: Unprivileged ICSR Read After A Debugger Translation Should Raise A Precise BusFault
+    Thread waited for the translation: got 0x0, expected 0x1
+```
+
+The privileged steps lock the core up, so the later steps never run. Passes with the fix.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
