@@ -1,3 +1,28 @@
+# Reproducer: TT cannot report Secure IDAU regions
+
+TT reports the IDAU region of an address in TT_RESP.IRVALID and IREGION, Secure regions
+included (Armv8-M ARM DDI0553B.r, B10.4, D1.2.266); Silicon Labs Series 2 and SiXG301 IDAUs have
+Secure regions. tlib's IDAU regions can only be Non-secure or Non-secure callable, so Secure memory
+must be left outside all regions, where TT reports IRVALID = 0. The fix adds a Secure flag (RLAR
+bit 2).
+
+`src/test.c` runs on a TrustZone-enabled Cortex-M33 (`test.repl`). Fixed by tlib branch `arm-m-idau-secure` and renode-infrastructure branch `cortexm-idau-secure-regions`.
+
+On Renode `master`:
+
+```
+failed: TT Should Report A Secure IDAU Region
+    TT_RESP.S in the Secure IDAU region: got 0x0, expected 0x1
+OK: TT Should Report A Non-secure IDAU Region
+failed: TT Should Report A Non-secure Callable And Secure IDAU Region As Non-secure Callable
+    KeywordException: Expected pattern "Region 2 is both Non-secure callable and Secure" did not appear in the log
+OK: TT Should Report No IDAU Region Outside All Regions
+```
+
+Passes with both fixes; with only the tlib fix, `CortexM.IDAURegion` still drops RLAR bit 2.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
