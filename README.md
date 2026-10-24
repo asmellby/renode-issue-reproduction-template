@@ -1,3 +1,24 @@
+# Zephyr reproducer: ARMv8-M stack limits (MSPLIM/PSPLIM) are not checked
+
+Renode never checks SP against MSPLIM/PSPLIM. Writing SP below the limit, a load or store
+whose SP writeback goes below it (PUSH, STMDB, STRD, VPUSH, ...) and exception stacking below it
+should raise UsageFault.STKOF without writing below the limit; a lazy FP context below the limit
+should set FPCCR.SPLIMVIOL; unprivileged writes to PSPLIM should be ignored (Armv8-M ARM
+DDI0553B.r, `ViolatesSPLim()`, rules YVWT and ZLZG). Zephyr's `CONFIG_BUILTIN_STACK_GUARD` relies
+on these checks.
+
+`tests/kernel/fatal/exception` overflows a supervisor thread stack in `test_fatal_stack_hw_overflow`; the built-in stack guard (PSPLIM) must catch it. `bin/zephyr.elf` is the unmodified test: `west build -b nucleo_h533re zephyr/tests/kernel/fatal/exception`. Bare-metal reproducer: branch `stack-limit`. Fixed by tlib branch `arm-m-stack-limit`.
+
+On Renode `master` the test hangs in `test_fatal_stack_hw_overflow`, and the Robot test times out:
+
+```
+===================================================================
+START - test_fatal_stack_hw_overflow
+test stack HW-based overflow - supervisor 1
+```
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
