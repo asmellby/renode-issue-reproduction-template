@@ -1,3 +1,24 @@
+# Zephyr reproducer: A CCR write clears the CCR fields it does not own
+
+CCR.BFHFNMIGN and CCR.TRD are shared between Security states; the other fields are banked
+(Armv8-M ARM DDI0553B.r, D1.2.9). tlib stores the shared fields in the Secure bank's word
+(`M_REG_COMMON` is `M_REG_S`) and `ccr_write()` overwrites that word, so with TrustZone a Secure
+write clears BFHFNMIGN and TRD, and a Non-secure write clears the Secure banked fields. This
+regressed when CCR moved into tlib (`1ae05700`).
+
+On a TrustZone core the app sets CCR.BFHFNMIGN at negative priority, as the HardFault handler does, reads an address that raises a bus error, then writes CCR_NS and checks the Secure CCR. Source: `app/src/main.c`. Bare-metal reproducer: branch `ccr-common-fields`. Fixed by tlib branch `arm-m-ccr-common-fields`.
+
+UART output on Renode `master` (fault dumps shortened):
+
+```
+*** Booting Zephyr OS build a915b2f12675 ***
+FAIL: CCR.BFHFNMIGN reads back as 0 after setting it
+```
+
+The core then enters Lockup on the BusFault that BFHFNMIGN should have ignored (`nvic0: Synchronous fault BusFault cannot escalate to HardFault, entering Lockup.`).
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
