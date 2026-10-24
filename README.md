@@ -1,3 +1,34 @@
+# Reproducer: Exception frames are stacked with privileged access rights
+
+Renode checks exception stacking against the MPU with the privilege of the handler being
+entered. Stacking, and later lazy FP preservation, should use the privilege of the interrupted
+thread (Armv8-M ARM DDI0553B.r, `PushStack()`, `Stack()`, `UpdateFPCCR()`). An unprivileged thread
+that overflows its stack therefore writes its frame into memory it cannot access instead of
+raising MemManage.MSTKERR (or MLSPERR for the FP context). A tail-chain from a Secure to a
+Non-secure exception should push the additional state context to the stack EXC_RETURN selects
+(`PushCalleeStack()`); Renode pushes it to the returning handler's MSP_S, so the return to a Secure
+thread on PSP_S fails its integrity signature check.
+
+`src/test.c` runs on a TrustZone-enabled Cortex-M33 (`test.repl`). Fixed by tlib branch `arm-m-stacking-privilege`.
+
+On Renode `master`:
+
+```
+failed: Firmware Should Finish
+    Unexpected exception 3 (CFSR 0, PC 276)
+failed: Unprivileged Stacking Into Privileged Memory Should Raise MSTKERR
+    CFSR after stacking an unprivileged frame into privileged-only memory: got 0x0, expected 0x10
+OK: Privileged Stacking Into Privileged Memory Should Succeed
+failed: Tail-Chain To Non-secure Should Push The Callee Frame To The Thread Stack
+    R4-R11 restored from the callee frame on return to the thread: got 0x0, expected 0x1
+failed: Lazy FP Preservation Of An Unprivileged Thread Should Raise MLSPERR
+    CFSR after lazily preserving into privileged-only memory: got 0x0, expected 0x20
+```
+
+Passes with the fix.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
