@@ -1,3 +1,58 @@
+# Reproducer: ARMv8-M stack limits (MSPLIM/PSPLIM) are not checked
+
+Renode never checks SP against MSPLIM/PSPLIM. Writing SP below the limit, a load or store
+whose SP writeback goes below it (PUSH, STMDB, STRD, VPUSH, ...) and exception stacking below it
+should raise UsageFault.STKOF without writing below the limit; a lazy FP context below the limit
+should set FPCCR.SPLIMVIOL; unprivileged writes to PSPLIM should be ignored (Armv8-M ARM
+DDI0553B.r, `ViolatesSPLim()`, rules YVWT and ZLZG). Zephyr's `CONFIG_BUILTIN_STACK_GUARD` relies
+on these checks.
+
+`src/test.c` runs on the harness Cortex-M33. Fixed by tlib branch `arm-m-stack-limit`.
+
+On Renode `master`:
+
+```
+OK: Firmware Should Finish
+failed: SP Write Below PSPLIM Should Raise STKOF
+    CFSR after MOV SP below PSPLIM: got 0x0, expected 0x100000
+failed: Push Below PSPLIM Should Raise STKOF
+    CFSR after STMDB below PSPLIM: got 0x0, expected 0x100000
+failed: Exception Stacking Below PSPLIM Should Raise STKOF
+    CFSR after stacking below PSPLIM: got 0x0, expected 0x100000
+failed: STRD Below PSPLIM Should Raise STKOF
+    CFSR after STRD below PSPLIM: got 0x0, expected 0x100000
+failed: STKOF In An IT Block Should Keep ITSTATE
+    CFSR after MOV SP below PSPLIM in an IT block: got 0x0, expected 0x100000
+failed: NMI Stacking Below PSPLIM Should Raise STKOF With STKOFHFNMIGN
+    CFSR in the NMI handler: got 0x0, expected 0x100000
+failed: Unprivileged MSR PSPLIM Should Be Ignored
+    PSPLIM unchanged by an unprivileged write: got 0x0, expected 0x1
+failed: PSPLIM Bits 2 To 0 Should Be RES0
+    PSPLIM reads LIMIT after writing LIMIT + 5: got 0x0, expected 0x1
+failed: VPUSH Below PSPLIM Should Raise STKOF
+    CFSR after VPUSH below PSPLIM: got 0x0, expected 0x100000
+failed: Lazy FP Context Below PSPLIM Should Not Be Written
+    CFSR after stacking below PSPLIM: got 0x0, expected 0x100000
+failed: SUBS SP Below PSPLIM Should Leave The Flags
+    CFSR after SUBS SP below PSPLIM: got 0x0, expected 0x100000
+failed: ADDS SP Below PSPLIM Should Leave The Flags
+    CFSR after ADDS SP below PSPLIM: got 0x0, expected 0x100000
+failed: Stacking Fault Above PSPLIM Should Still Raise STKOF
+    CFSR in the MemManage handler: got 0x10, expected 0x100010
+OK: Undefined Load Store With SP Writeback Should Raise UNDEFINSTR
+failed: Unprivileged MRS MSP Should Read Zero
+    MSP read unprivileged: got 0x200013F8, expected 0x0
+```
+
+Steps 10-14: flag-setting `SUBS/ADDS SP` keep NZCV on STKOF (10, 11), a stacking MemManage above
+PSPLIM still records and pends the STKOF UsageFault (12), an UNDEFINED load/store with SP writeback
+raises UNDEFINSTR rather than STKOF (13), and unprivileged `MRS MSP` reads zero (14). Step 13 also
+passes on `master`, which has no stack check.
+
+Passes with the fix.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
