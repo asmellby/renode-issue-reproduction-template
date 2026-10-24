@@ -1,3 +1,26 @@
+# Zephyr reproducer: The MPU is applied to PPB accesses
+
+PPB accesses bypass the MPU, and an unprivileged access to a privileged-only PPB register is a
+precise BusFault that leaves the register unchanged; STIR accepts unprivileged writes when
+CCR.USERSETMPEND is set (Armv8-M ARM DDI0553B.r, rules TGQD, RTKK, NDML, NSWG, DQQS). Renode checks
+PPB accesses against the MPU: unprivileged accesses raise MemManage (permitted STIR writes
+included) or, with the MPU off, succeed, and privileged accesses fault without PRIVDEFENA or under
+an overlapping MPU region.
+
+`tests/arch/arm/arm_thread_swap` (with `CONFIG_ARM_MPU=y`, needed for userspace) sets CCR.USERSETMPEND and pends an interrupt through STIR from a user thread. `bin/zephyr.elf` is the unmodified test: `west build -b nucleo_h533re zephyr/tests/arch/arm/arm_thread_swap -- -DCONFIG_ARM_MPU=y`. Bare-metal reproducer: branch `ppb-mpu`. Fixed by tlib branch `arm-m-ppb-mpu`.
+
+On Renode `master` the user thread's STIR write in `test_arm_syscalls` raises a MemManage fault:
+
+```
+USR Thread: IRQ Line: 114
+E: ***** MPU FAULT *****
+E:   Data Access Violation
+E:   MMFAR Address: 0xe000ef00
+E: >>> ZEPHYR FATAL ERROR 0: CPU exception on CPU 0
+```
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
