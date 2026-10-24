@@ -1,3 +1,36 @@
+# Reproducer: A CCR write clears the CCR fields it does not own
+
+CCR.BFHFNMIGN and CCR.TRD are shared between Security states; the other fields are banked
+(Armv8-M ARM DDI0553B.r, D1.2.9). tlib stores the shared fields in the Secure bank's word
+(`M_REG_COMMON` is `M_REG_S`) and `ccr_write()` overwrites that word, so with TrustZone a Secure
+write clears BFHFNMIGN and TRD, and a Non-secure write clears the Secure banked fields. This
+regressed when CCR moved into tlib (`1ae05700`).
+
+`src/test.c` runs on a TrustZone-enabled Cortex-M33 (`test.repl`). Fixed by tlib branch `arm-m-ccr-common-fields`.
+
+On Renode `master`:
+
+```
+failed: Firmware Should Finish
+    The firmware did not finish its steps
+failed: Secure CCR Write Should Keep Banked And Shared Fields
+    CCR after setting DIV_0_TRP and BFHFNMIGN: got 0x10, expected 0x110
+failed: Non-secure CCR Write Should Keep The Secure CCR
+    Secure CCR after writing CCR_NS: got 0x0, expected 0x10
+failed: Non-secure CCR Write Of BFHFNMIGN Should Be Ignored Without BFHFNMINS
+    CCR.BFHFNMIGN after clearing it through CCR_NS: got 0x0, expected 0x1
+OK: Non-secure CCR Write Of BFHFNMIGN Should Take Effect With BFHFNMINS
+OK: TRD Should Be RES0 On An Armv8.0-M Core
+failed: Bits 9 And 0 Should Be RES1
+    CCR bits [9] and [0]: got 0x0, expected 0x201
+failed: BFHFNMIGN Should Ignore A BusFault At Negative Priority
+    Execution continued after the bus error: got 0x0, expected 0x1
+```
+
+Passes with the fix.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.
