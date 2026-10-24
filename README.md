@@ -1,3 +1,29 @@
+# Zephyr reproducer: Exception frames are stacked with privileged access rights
+
+Renode checks exception stacking against the MPU with the privilege of the handler being
+entered. Stacking, and later lazy FP preservation, should use the privilege of the interrupted
+thread (Armv8-M ARM DDI0553B.r, `PushStack()`, `Stack()`, `UpdateFPCCR()`). An unprivileged thread
+that overflows its stack therefore writes its frame into memory it cannot access instead of
+raising MemManage.MSTKERR (or MLSPERR for the FP context). A tail-chain from a Secure to a
+Non-secure exception should push the additional state context to the stack EXC_RETURN selects
+(`PushCalleeStack()`); Renode pushes it to the returning handler's MSP_S, so the return to a Secure
+thread on PSP_S fails its integrity signature check.
+
+A user thread moves its SP to the bottom of its stack and waits for the timer interrupt; stacking must fail with MSTKERR and Zephyr must report a stack overflow. Source: `app/src/main.c`. Bare-metal reproducer: branch `stacking-privilege`. Fixed by tlib branch `arm-m-stacking-privilege`.
+
+UART output on Renode `master` (fault dumps shortened):
+
+```
+*** Booting Zephyr OS build a915b2f12675 ***
+***** MPU FAULT *****
+  Unstacking error
+>>> ZEPHYR FATAL ERROR 18: Unknown error on CPU 0
+FAIL: the frame was stacked below the user stack, and only unstacking it faulted (K_ERR_ARM_MEM_UNSTACKING)
+REPRODUCER DONE
+```
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.
