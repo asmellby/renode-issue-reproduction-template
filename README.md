@@ -1,3 +1,33 @@
+# Reproducer: A CPU reset drops the IDAU configuration
+
+The IDAU is outside the PE (Armv8-M ARM DDI0553B.r, B10.4) and usually fixed-function, so a CPU
+reset should not change it. tlib clears the IDAU regions, the IDAU enable, the custom IDAU handler
+flag and the implementation-defined attribution exemptions on `cpu Reset` and AIRCR.SYSRESETREQ,
+and nothing restores them. `AddressBitIdau.cs` is a custom IDAU model without registers.
+
+`src/test.c` runs on a TrustZone-enabled Cortex-M33 (`test.repl`). Fixed by tlib branch `arm-m-idau-reset`.
+
+On Renode `master`:
+
+```
+failed: IDAU Regions Should Attribute The Region After A CPU Reset
+    TT_RESP.S for the IDAU NSC region after cpu Reset: got 0x0, expected 0x1
+failed: IDAU Regions Should Attribute The Region After A System Reset Request
+    TT_RESP.S for the IDAU NSC region after SYSRESETREQ: got 0x0, expected 0x1
+failed: Custom IDAU Should Attribute The Region After A CPU Reset
+    TT_RESP.S for the IDAU NSC region after cpu Reset: got 0x0, expected 0x1
+failed: Custom IDAU Should Attribute The Region After A System Reset Request
+    TT_RESP.S for the IDAU NSC region after SYSRESETREQ: got 0x0, expected 0x1
+failed: Attribution Exemption Should Apply After A CPU Reset
+    TT_RESP.S for the exempt region after cpu Reset: got 0x0, expected 0x1
+failed: Attribution Exemption Should Apply After A System Reset Request
+    TT_RESP.S for the exempt region after SYSRESETREQ: got 0x0, expected 0x1
+```
+
+Passes with the fix.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.

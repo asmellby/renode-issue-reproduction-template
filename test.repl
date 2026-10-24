@@ -5,6 +5,9 @@ cpu: CPU.CortexM @ sysbus
     cpuType: "cortex-m33"
     nvic: nvic
     numberOfMPURegions: 8
+    enableTrustZone: true
+    numberOfSAURegions: 8
+    numberOfIDAURegions: 8
 
 flash: Memory.MappedMemory @ sysbus 0x00000000
     size: 0x10000
