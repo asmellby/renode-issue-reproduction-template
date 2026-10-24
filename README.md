@@ -1,3 +1,24 @@
+# Zephyr reproducer: A CPU reset drops the IDAU configuration
+
+The IDAU is outside the PE (Armv8-M ARM DDI0553B.r, B10.4) and usually fixed-function, so a CPU
+reset should not change it. tlib clears the IDAU regions, the IDAU enable, the custom IDAU handler
+flag and the implementation-defined attribution exemptions on `cpu Reset` and AIRCR.SYSRESETREQ,
+and nothing restores them. `AddressBitIdau.cs` is a custom IDAU model without registers.
+
+A Non-secure callable IDAU region, from IDAU regions or the custom model `AddressBitIdau.cs`, must still be Secure in TT after `sys_reboot()`. Source: `app/src/main.c`. Bare-metal reproducer: branch `idau-reset`. Fixed by tlib branch `arm-m-idau-reset`.
+
+On Renode `master` both tests fail after the first reboot. UART output:
+
+```
+*** Booting Zephyr OS build a915b2f12675 ***
+PASS: TT reports the IDAU NSC region as Secure
+Rebooting
+*** Booting Zephyr OS build a915b2f12675 ***
+FAIL: TT reports the IDAU NSC region as Non-secure
+```
+
+---
+
 # Zephyr reproducer harness for nucleo_h533re
 
 Runs a prebuilt Zephyr app on the template's Nucleo H533RE platform; CI only runs Renode.

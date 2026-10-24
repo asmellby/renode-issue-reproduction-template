@@ -18,9 +18,11 @@ jobs:
           - repository: 'https://github.com/renode/renode'
             revision: master
             name: renode-latest
-          # - repository: 'https://github.com/your-organization/renode'
-          #   revision: your-branch
-          #   name: renode-custom
+          # Renode with the fix: renode, renode-infrastructure and tlib forks whose
+          # ci/idau-reset branches point at the fix branches named in README.md
+          - repository: 'https://github.com/asmellby/renode'
+            revision: ci/idau-reset
+            name: renode-fixed
     steps:
       - name: Clone repository
         uses: actions/checkout@v5
