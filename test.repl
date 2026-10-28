@@ -11,3 +11,7 @@ flash: Memory.MappedMemory @ sysbus 0x00000000
 
 sram: Memory.MappedMemory @ sysbus 0x20000000
     size: 0x10000
+
+// Rejects writes: a bus error for Device-nGnRnE (found from the MPU regions), dropped otherwise
+busError: Miscellaneous.MpuRegionBusErrorPeripheral @ sysbus 0x40000000
+    cpu: cpu

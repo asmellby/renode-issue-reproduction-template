@@ -1,3 +1,33 @@
+# Reproducer: Writing MPU_RNR from a bus access that then faults crashes Renode
+
+A model of a device that rejects writes has to know the memory type the MPU gives the access to
+report the rejection correctly. For Device memory with the nE attribute only the endpoint returns
+the write acknowledgement (Armv8-M ARM DDI0553B.r, B7.12.3, rule FWFR), so the rejection comes back
+with the write as a precise BusFault (BFSR.PRECISERR, B3.12); with the E attribute the write can
+be acknowledged before it reaches the device. The memory type is the MAIR attribute of the MPU
+region that holds the address (D1.2.168), and the model reaches the regions by selecting each one
+through MPU_RNR (D1.2.174). MPU_RNR only selects the region shown in MPU_RBAR and MPU_RLAR, but
+`tlib_set_pmsav8_rnr()` flushes the TLB, which also clears the CPU's current translation block.
+When the write then ends in a precise BusFault (`BusAccessException`), Renode crashes with a
+segmentation fault. `MpuRegionBusErrorPeripheral.cs` is such a model: it drops rejected writes to
+Device-nGnRE and raises a bus error for Device-nGnRnE.
+
+`src/test.c` runs on the harness Cortex-M33. Fixed by tlib branch `arm-m-mpu-rnr-tlb`.
+
+On Renode `master`, Renode crashes at the write to Device-nGnRnE (step 2), and every test fails:
+
+```
+failed: Firmware Should Finish
+failed: Rejected Write Without The MPU Should Be Dropped
+failed: Rejected Write To Device-nGnRE Should Be Dropped
+failed: Rejected Write To Device-nGnRnE Should Be A Precise BusFault
+Renode crashed during testing and caused a failure
+```
+
+Passes with the fix.
+
+---
+
 # Bare-metal Cortex-M33 reproducer harness
 
 Harness for CPU-level reproducers; each reproducer branch adds a `src/test.c` and `test.robot`.

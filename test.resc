@@ -2,6 +2,8 @@ $name?="tlib-repro"
 $repl?=$ORIGIN/test.repl
 $bin?=$ORIGIN/artifacts/test.elf
 
+include $ORIGIN/MpuRegionBusErrorPeripheral.cs
+
 mach create $name
 machine LoadPlatformDescription $repl
 
